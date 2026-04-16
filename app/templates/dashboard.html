@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CTI Hostile Infrastructure Dashboard</title>
+
+    <style>
+        /* ===== Global Theme ===== */
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background-color: #0e1117;
+            color: #e6e6e6;
+        }
+
+        a {
+            color: #4fc3f7;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* ===== Top Navigation Bar ===== */
+        .navbar {
+            background-color: #161b22;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .navbar h1 {
+            font-size: 18px;
+            margin: 0;
+            color: #58a6ff;
+        }
+
+        .nav-links a {
+            margin-left: 20px;
+            font-size: 14px;
+        }
+
+        /* ===== Main Layout ===== */
+        .container {
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 230px;
+            background-color: #161b22;
+            padding: 20px;
+            border-right: 1px solid #30363d;
+            min-height: calc(100vh - 50px);
+        }
+
+        .sidebar h3 {
+            font-size: 14px;
+            color: #8b949e;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .sidebar li {
+            margin-bottom: 10px;
+        }
+
+        /* ===== Content Area ===== */
+        .content {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: #161b22;
+            padding: 16px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #58a6ff;
+        }
+
+        /* ===== Tables ===== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid #30363d;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #0e1117;
+            color: #8b949e;
+            text-align: left;
+        }
+
+        /* ===== Severity Styling ===== */
+        .severity-high {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .severity-medium {
+            color: #feca57;
+            font-weight: bold;
+        }
+
+        .severity-low {
+            color: #1dd1a1;
+            font-weight: bold;
+        }
+
+        /* ===== Forms ===== */
+        select {
+            background-color: #0e1117;
+            color: #e6e6e6;
+            border: 1px solid #30363d;
+            padding: 6px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- ===== Top Navigation ===== -->
+<div class="navbar">
+    <h1>CTI SOC Dashboard</h1>
+    <div class="nav-links">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/charts">Analytics</a>
+        <a href="/stix">STIX</a>
+        <a href="/ioc">IoCs</a>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- ===== Sidebar ===== -->
+    <div class="sidebar">
+        <h3>Actions</h3>
+        <ul>
+            <li><a href="/collect">Collect New Indicators</a></li>
+            <li><a href="/ioc">View IoCs (JSON)</a></li>
+            <li><a href="/stix">Export STIX</a></li>
+        </ul>
+
+        <h3>Heatmap Filters</h3>
+        <ul>
+            <li><a href="/map">All Threats</a></li>
+            <li><a href="/map?days=1">Last 24 Hours</a></li>
+            <li><a href="/map?threat=botnet">Botnet</a></li>
+            <li><a href="/map?threat=malware">Malware</a></li>
+            <li><a href="/map?threat=scanning">Scanning</a></li>
+            <li><a href="/map?threat=bruteforce">Bruteforce</a></li>
+        </ul>
+    </div>
+
+    <!-- ===== Main Content ===== -->
+    <div class="content">
+
+        <!-- Overview -->
+        <div class="card">
+            <h2>Threat Overview</h2>
+
+            <form method="get" action="/dashboard">
+                <label><strong>Filter by Threat Type:</strong></label><br>
+                <select name="threat" onchange="this.form.submit()">
+                    <option value="">All</option>
+                    {% for threat in threat_counts.keys() %}
+                        <option value="{{ threat }}"
+                        {% if selected_threat == threat %}selected{% endif %}>
+                            {{ threat }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <p><strong>Total Indicators:</strong> {{ total_iocs }}</p>
+
+            <table>
+                <tr>
+                    <th>Threat Type</th>
+                    <th>Count</th>
+                    <th>Severity</th>
+                </tr>
+                {% for threat, count in threat_counts.items() %}
+                <tr>
+                    <td>{{ threat }}</td>
+                    <td>{{ count }}</td>
+                    <td>
+                        {% if threat in ["botnet", "malware"] %}
+                            <span class="severity-high">High</span>
+                        {% elif threat == "bruteforce" %}
+                            <span class="severity-medium">Medium</span>
+                        {% else %}
+                            <span class="severity-low">Low</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="card">
+            <h2>Global Hostile Infrastructure Heatmap</h2>
+            {{ heatmap_html | safe }}
+        </div>
+
+        <!-- Analytics -->
+        <div class="card">
+            <h2>Threat Analytics</h2>
+            {{ chart_html | safe }}
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>
